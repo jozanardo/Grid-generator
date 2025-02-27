@@ -8,7 +8,7 @@ import (
 	"grid_generator/models"
 )
 
-// GenerateSchedule processes the list of teachers and generates a schedule (currently just returns JSON).
+// Processes the list of teachers and generates a schedule (currently just returns JSON).
 func GenerateSchedule(teachers []models.Teacher) {
 	jsonData, err := json.MarshalIndent(teachers, "", "  ")
 	if err != nil {

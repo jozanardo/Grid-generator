@@ -8,7 +8,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-// ReadExcelFile opens and reads the specified sheet from an Excel file.
+// Opens and reads the specified sheet from an Excel file.
 func ReadExcelFile(sheetName string) ([][]string, error) {
 	file, err := dialog.File().Filter("Excel Files", "xlsx").Title("Select an Excel file").Load()
 	if err != nil {

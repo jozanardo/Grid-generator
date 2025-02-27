@@ -21,12 +21,16 @@ func main() {
 	errorsOccurred := false
 
 	for i, line := range lines[1:] {
-		teacher, err := validation.ValidateTeacher(line)
-		if err != nil {
+		teacher, errors := validation.ProcessTeacherData(line)
+
+		if len(errors) > 0 {
+			fmt.Printf("⚠️ Errors on line %d:\n", i+2)
+			for _, err := range errors {
+				fmt.Println("   -", err)
+			}
 			errorsOccurred = true
-			fmt.Printf("⚠️ Error on line %d: %v\n", i+2, err)
 		} else {
-			teachers = append(teachers, *teacher)
+			teachers = append(teachers, teacher)
 		}
 	}
 
@@ -35,6 +39,5 @@ func main() {
 		return
 	}
 
-	// Call scheduler to generate and display the schedule
 	scheduling.GenerateSchedule(teachers)
 }

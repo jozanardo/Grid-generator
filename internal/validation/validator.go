@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,40 +9,68 @@ import (
 	"grid_generator/utils"
 )
 
-// ValidateTeacher validates a teacher's data from a line in the spreadsheet.
-func ValidateTeacher(line []string) (*models.Teacher, error) {
+// Validates and normalizes a teacher's data extracted from Excel
+func ProcessTeacherData(line []string) (models.Teacher, []string) {
+	var errors []string
+
+	teacher := models.Teacher{}
+
 	if len(line) < 5 {
-		return nil, errors.New("incomplete row")
+		return teacher, []string{fmt.Sprintf("Incomplete line, expected 5 columns, found: %d", len(line))}
 	}
 
-	// Validate name
-	name := strings.TrimSpace(line[0])
-	if name == "" || !utils.NameRegex.MatchString(name) {
-		return nil, fmt.Errorf("invalid name: '%s'", name)
+	teacher.Name = strings.TrimSpace(line[0])
+	if teacher.Name == "" || !utils.NameRegex.MatchString(teacher.Name) {
+		errors = append(errors, fmt.Sprintf("Invalid name: '%s'", teacher.Name))
 	}
 
-	// Validate subject
-	subject := strings.TrimSpace(line[1])
-	normalizedSubject := utils.NormalizeText(subject) // Remove accents, convert to lowercase
+	teacher.Subject = strings.TrimSpace(line[1])
+	normalizedSubject := utils.NormalizeText(teacher.Subject)
 	if !utils.IsValidSubject(normalizedSubject) {
-		return nil, fmt.Errorf("invalid subject for '%s': '%s'", name, subject)
+		errors = append(errors, fmt.Sprintf("Invalid subject for ['%s']: '%s'", teacher.Name, teacher.Subject))
 	}
 
-	// Validate number of classes
 	numberOfClasses, err := strconv.Atoi(strings.TrimSpace(line[2]))
 	if err != nil || numberOfClasses <= 0 {
-		return nil, fmt.Errorf("invalid number of classes for '%s': '%s'", name, line[2])
+		errors = append(errors, fmt.Sprintf("Invalid number of classes fo['%s']: '%s'", teacher.Name, line[2]))
+	} else {
+		teacher.NumberOfClasses = numberOfClasses
 	}
 
-	// Trim available days and hours
-	availableDays := strings.TrimSpace(line[3])
-	availableHours := strings.TrimSpace(line[4])
+	availableDays, dayErrors := ProcessAvailableDays(strings.TrimSpace(line[3]))
+	if len(dayErrors) > 0 {
+		for _, err := range dayErrors {
+			errors = append(errors, fmt.Sprintf("Error in validating days for ['%s']: %v", teacher.Name, err))
+		}
+	} else {
+		teacher.AvailableDays = availableDays
+	}
 
-	return &models.Teacher{
-		Name:            name,
-		Subject:         subject,
-		NumberOfClasses: numberOfClasses,
-		AvailableDays:   availableDays,
-		AvailableHours:  availableHours,
-	}, nil
+	teacher.AvailableHours = strings.TrimSpace(line[4])
+
+	return teacher, errors
+}
+
+// validates and normalizes the days reported to the teacher.
+func ProcessAvailableDays(daysInput string) (string, []string) {
+	days := strings.Split(daysInput, ",")
+	var normalizedDays []string
+	var errors []string
+
+	for _, day := range days {
+		day = strings.TrimSpace(strings.ToUpper(day))
+
+		if normalized, exists := utils.WeekDayNormalization[day]; exists {
+			day = normalized
+		}
+
+		if !utils.ValidWeekDays[day] {
+			errors = append(errors, fmt.Sprintf("invalid day: '%s'", day))
+			continue
+		}
+
+		normalizedDays = append(normalizedDays, day)
+	}
+
+	return strings.Join(normalizedDays, ","), errors
 }
